@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"reflect"
 
 	"github.com/bitrise-io/go-utils/log"
 	prompt "github.com/c-bata/go-prompt"
@@ -76,6 +77,15 @@ func failf(format string, v ...interface{}) {
 	os.Exit(1)
 }
 
+func contains(arr []string, str string) bool {
+	for _, a := range arr {
+		if a == str {
+			return true
+		}
+	}
+	return false
+}
+
 func main() {
 	log.Infof("Fetching step list")
 
@@ -95,21 +105,52 @@ func main() {
 	// question := `Which step failed?`
 	// failingStepName, err := goinp.SelectFromStrings(question, names)
 
-	// question = fmt.Sprintf("Which version failed of the step (%s)?", failingStepName)
-
-	// keys := reflect.ValueOf(d.Steps[failingStepName].Versions).MapKeys()
-	// stepVersions := make([]string, len(keys))
-	// for i := 0; i < len(keys); i++ {
-	// 	stepVersions[i] = keys[i].String()
-	// }
 	// _, err = goinp.SelectFromStrings(question, stepVersions)
 
 	for _, name := range names {
 		completerOptions = append(completerOptions, prompt.Suggest{Text: name, Description: "No descp yest"})
 	}
 
-	fmt.Println("Please select table.")
-	t := prompt.Input("> ", completer)
-	fmt.Println("You selected " + t)
+	var failingStepName string
+	for true {
+		log.Printf("Please select table.")
+		failingStepName = prompt.Input("> ", completer)
+		if failingStepName == "exit" {
+			os.Exit(0)
+		}
 
+		ok := contains(names, failingStepName)
+		if ok {
+			break
+		}
+
+		log.Warnf("Wrong selection. - %s - is not in the list", failingStepName)
+		fmt.Println()
+	}
+
+	completerOptions = []prompt.Suggest{}
+	keys := reflect.ValueOf(d.Steps[failingStepName].Versions).MapKeys()
+	stepVersions := make([]string, len(keys))
+	for i := 0; i < len(keys); i++ {
+		stepVersions[i] = keys[i].String()
+		completerOptions = append(completerOptions, prompt.Suggest{Text: stepVersions[i], Description: "No descp yest"})
+	}
+
+	var failingStepVersion string
+	for true {
+		log.Printf("Which version failed of the step (%s)?", failingStepName)
+
+		failingStepVersion = prompt.Input("> ", completer)
+		if failingStepVersion == "exit" {
+			os.Exit(0)
+		}
+
+		ok := contains(stepVersions, failingStepVersion)
+		if ok {
+			break
+		}
+
+		log.Warnf("Wrong selection. - %s - is not in the list", failingStepVersion)
+		fmt.Println()
+	}
 }
